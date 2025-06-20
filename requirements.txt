@@ -1,0 +1,17 @@
+langchain_chroma
+langchain_core
+langchain_huggingface
+langchain_openai
+langgraph
+pandas
+pydantic
+pytest
+python-dotenv
+Requests
+streamlit
+streamlit_lottie
+tqdm
+typing_extensions
+pytest-json-report
+redis
+gdown

@@ -1,0 +1,13 @@
+# Entornos virtuales y caché
+venv/
+__pycache__/
+
+# Archivos grandes/datasets
+dataset/
+tmp_dataset.zip
+vector_db/
+*.csv
+
+# Otros archivos pesados
+*.zip
+*.log
