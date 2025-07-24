@@ -9,7 +9,7 @@ from .state import State
 from .tools import create_tool_node_with_fallback
 
 
-def after_sales_tool(state: dict) -> dict:
+def after_sales_tool(state: dict) -> dict:    # Detecta si el último mensaje fue del ToolMessage "RouteToCustomerSupport"
     tool_msg = state["messages"][-1]
     if (
         isinstance(tool_msg, ToolMessage)
@@ -51,7 +51,8 @@ def after_support_tool(state: dict) -> dict:
             }
         }
     return {}
-
+# Rol: Busca si se activó la herramienta "EscalateToHuman".
+# Función: Extrae severity y summary del mensaje del agente para que luego lo revise un supervisor humano.
 
 from langchain_core.messages import AIMessage, HumanMessage
 from langgraph.types import interrupt
@@ -77,12 +78,13 @@ def human_approval(state: State) -> dict:
         ],
         "need_human_approval": None,
     }
-
+# Rol: Busca si se activó la herramienta "EscalateToHuman".
+# Función: Extrae severity y summary del mensaje del agente para que luego lo revise un supervisor humano.
 
 def build_graph(return_builder=False):
     builder = StateGraph(State)
     builder.add_node("sales_rep", sales_assistant)
-    builder.add_node("customer_support", support_assistant)
+    builder.add_node("customer_support", support_assistant) # Cada uno de estos nodos representa una etapa posible del flujo conversacional.
     builder.add_node("sales_tools", create_tool_node_with_fallback(sales_tools))
     builder.add_node("support_tools", create_tool_node_with_fallback(support_tools))
     builder.add_node("after_sales_tool", after_sales_tool)
@@ -128,7 +130,7 @@ def build_graph(return_builder=False):
 
         return END
 
-    builder.add_conditional_edges(START, route_start, ["sales_rep", "customer_support"])
+    builder.add_conditional_edges(START, route_start, ["sales_rep", "customer_support"]) # permiten Las conexiones entre nodos
     builder.add_conditional_edges("sales_rep", route_sales, ["sales_tools", END])
     builder.add_edge("sales_tools", "after_sales_tool")
     builder.add_conditional_edges(
@@ -151,3 +153,8 @@ def build_graph(return_builder=False):
 
 
 graph = build_graph()
+
+# Resultado final
+# Si el usuario hace una consulta normal → va a sales_rep → llama herramientas → responde.
+# Si requiere soporte → salta a customer_support.
+# Si requiere supervisor → pausa con interrupt() y espera una respuesta humana.

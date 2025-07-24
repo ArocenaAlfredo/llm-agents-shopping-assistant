@@ -5,7 +5,7 @@ import pandas as pd
 from langchain_chroma import Chroma
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableLambda
-from langchain_core.tools import InjectedToolArg, tool
+from langchain_core.tools import tool
 from langchain_huggingface import HuggingFaceEmbeddings
 from langgraph.prebuilt import ToolNode
 from langgraph.types import interrupt
@@ -179,42 +179,89 @@ def structured_search_tool(
     LLM Usage Note:
     This tool is ideal for filtered browsing, purchase history analysis, or category breakdowns.
     """
-    pass
+    try:
+        user_id = get_user_id() or DEFAULT_USER_ID # Intenta obtener el usuario actual (con get_user_id()). Si no está seteado, usa uno por defecto (DEFAULT_USER_ID).
+
+        # Start from base data - Arma el catálogo completo uniendo productos con sus aisles y departamentos, así queda todo listo para filtrar
+        df = products.copy()
+        df = df.merge(aisles, on="aisle_id", how="left")
+        df = df.merge(departments, on="department_id", how="left")
+
+        # If history_only, filter by user's purchases - Historial del usuario
+        if history_only:
+            user_orders = orders[orders["user_id"] == user_id]
+            user_order_ids = user_orders["order_id"].unique()
+            history = prior[prior["order_id"].isin(user_order_ids)]
+
+            # Join with product metadata - Filtra los productos que el usuario compró antes.
+                                          #Después, une ese historial con el catálogo y procesa reordenados y filtros:
+            df = df.merge(history, on="product_id")
+            df["reordered"] = df["reordered"].astype(bool)
+
+            if reordered is not None:
+                df = df[df["reordered"] == reordered] # Si reordered=True, deja solo productos que se compraron más de una vez
+
+            if min_orders:   # Si se pide min_orders, filtra productos con al menos esa cantidad de compras.
+                order_counts = (
+                    df.groupby("product_id")["order_id"].count().reset_index(name="count")
+                )
+                df = df.merge(order_counts, on="product_id")
+                df = df[df["count"] >= min_orders]
+
+            if order_by:   #Ordena los productos según cantidad de compras (count) o posición promedio en carrito
+                df = df.sort_values(by=order_by, ascending=ascending)
+
+        # Apply filters
+        if product_name: #Permite buscar por nombre parcial de producto, departamento exacto, o pasillo exacto.
+            df = df[df["product_name"].str.lower().str.contains(product_name.lower())]
+        if department:
+            df = df[df["department"] == department]
+        if aisle:
+            df = df[df["aisle"].str.lower() == aisle.lower()]
+
+        # Grouping - Devuelve cuántos productos hay por departamento o aisle (en vez de listar cada producto).
+        if group_by:
+            result = (
+                df.groupby(group_by)["product_id"]
+                .count()
+                .reset_index(name="num_products")
+                .to_dict(orient="records")
+            )
+            return result
+
+        # Drop duplicates and limit - Quita duplicados y si se pide top_k, deja solo los primeros k productos.
+        df = df.drop_duplicates(subset="product_id")
+
+        if top_k:
+            df = df.head(top_k)
+
+        return df[["product_id", "product_name", "aisle", "department"]].to_dict(orient="records")
+           #Devuelve los resultados como lista de diccionarios, listos para mostrar o usar.
+    except Exception as e:
+        return [{"error": str(e)}] #  Si algo falla, devuelve un mensaje con el error (evita que el agente se rompa)
+# En resumen:
+# Esta función es como una versión “SQL sobre pandas”, muy flexible, y permite:
+# Buscar por texto
+# Filtrar por categorías
+# Revisar historial del usuario
+# Agrupar, ordenar y limitar resultados
 
 
 # TODO
+
 class RouteToCustomerSupport(BaseModel):
     """
-    Pydantic schema for the assistant tool that triggers routing to customer support.
+    Tool that triggers routing to customer support.
 
-    This tool is used by the assistant to signal that the user has a problem beyond
-    the scope of sales, such as refund requests or broken products.
-
-    ---
-    Fields:
+    Parameters:
     - reason (str): A short, human-readable message stating why support is needed.
-      This must match the user's stated concern.
 
-    ---
-    Usage Requirements:
-    - The assistant must populate this tool with the user's reason verbatim.
-    - It must be called in tool_calls from the LLM when escalation is needed.
-    - This tool is detected by `after_sales_tool(...)` to drive state transitions.
-
-    ---
-    Example:
-    ```json
-    {
-        "reason": "My laptop arrived broken and I want a refund"
-    }
-    ```
-
-    This schema must be registered as a tool in the assistant's tool list.
+    Returns:
+    - str: Confirmation message.
     """
-
     reason: str = Field(description="The reason why the customer needs support.")
-
-
+    def invoke(self) -> str:
+        return f"Routing to customer support for reason: {self.reason}"
 class EscalateToHuman(BaseModel):
     severity: str = Field(
         description="The severity level of the issue (low, medium, high)."
@@ -284,9 +331,24 @@ def search_products(query: str, top_k: int = 5):
     ]
     ```
     """
+    # make_query_prompt(query) → mejora el prompt para generar embeddings.
+    # get_vector_store() → abre la base vectorial (Chroma) con los embeddings ya construidos.
+    # vector_store.similarity_search(...) → busca los vectores más cercanos al embedding del query.
+    # Devuelve una lista de dicts con la info útil para el agente o la UI.
     pass
-
-
+    vector_store = get_vector_store()                                                                                                                    
+    prompt_query = make_query_prompt(query)
+    results = vector_store.similarity_search(prompt_query, k=top_k)
+    return [
+        {
+            "product_id":doc.metadata["product_id"],
+            "product_name":doc.metadata["product_name"],
+            "aisle":doc.metadata["aisle"],
+            "department":doc.metadata["department"],
+            "text":doc.page_content,
+        }
+        for doc in results
+    ]
 # TODO
 @tool
 def search_tool(query: str) -> str:
@@ -344,6 +406,31 @@ def search_tool(query: str) -> str:
     ```
     """
     pass
+    results = search_products(query)
+
+    if not results:
+        return "No products found matching your search."
+
+    lines = []
+    for r in results:
+        lines.append(
+            f"- {r['product_name']} (ID: {r['product_id']})\n"
+            f"  Aisle: {r['aisle']}\n"
+            f"  Department: {r['department']}\n"
+            f"  Details: {r['text']}"
+        )
+
+    return "\n\n".join(lines)
+    # ¿Qué hace este código?
+    #Llama a search_products(query)
+    #Si no encuentra nada, devuelve un mensaje simple.
+    #Si encuentra resultados, construye un string formateado con:
+    #Nombre del producto
+    #ID
+    #Aisle
+    #Departamento
+    #Detalles (descripción desde los embeddings)
+    #Con esto, tu herramienta semántica de búsqueda queda completamente funcional y lista para ser usada por un agente de LangChain.
 
 
 # ---- UPDATED: Cart tools with quantity support ----
@@ -495,7 +582,15 @@ def create_tool_node_with_fallback(tools: list) -> ToolNode:
     Returns:
     - ToolNode: A LangGraph-compatible tool node with error fallback logic.
     """
-    pass
+    fallback_runnable = RunnableLambda(handle_tool_error)
+    return ToolNode(tools).with_fallbacks(
+        [fallback_runnable], 
+        exception_key="error"
+    )
+    # ToolNode(tools) → crea el nodo con las herramientas que le pases
+    # .with_fallbacks(...) → le agrega un manejador de errores
+    # handle_tool_error → tu función ya definida que crea un ToolMessage con el error
+    # exception_key="error" → indica que el estado del grafo debe contener la clave error si algo sale mal
 
 
 __all__ = [

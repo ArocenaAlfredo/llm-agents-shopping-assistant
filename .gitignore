@@ -1,13 +1,28 @@
-# Entornos virtuales y caché
-venv/
+# Python cache
 __pycache__/
+*.py[cod]
+*.ipynb_checkpoints
 
-# Archivos grandes/datasets
-dataset/
-tmp_dataset.zip
-vector_db/
+# Entornos virtuales
+env/
+venv/
+.venv/
+
+# Archivos grandes o temporales
 *.csv
-
-# Otros archivos pesados
 *.zip
+*.npy
+*.h5
+*.pth
+*.pt
+*.pkl
+*.json
+*.sqlite
+.DS_Store
+
+# Archivos de configuración local
+.env
 *.log
+
+# Jupyter Notebook output
+*.checkpoint
