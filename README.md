@@ -1,102 +1,115 @@
-# LLM Agents Final Project
-> AI-Powered Shopping Assistant
+# LLM Agents – AI-Powered Shopping Assistant 
 
-Hi!
+This project implements a conversational AI shopping assistant using Large Language Models (LLMs) and intelligent agents. It simulates a real-world e-commerce customer service system capable of understanding natural language, retrieving product information, managing shopping carts, and handling support requests.
 
-You will be expected to finish this on your own, but you can use the available channels on Discord to ask questions and help others. Please read the entire README and ASSIGNMENT.md before starting, this will give you a better idea of what you need to accomplish.
+---
 
-## The Business problem
+##  Project Overview
 
-You are working for a major e-commerce company that wants to revolutionize their customer service experience using AI. They have requested the Data Science team to build an intelligent shopping assistant that can help customers find products, manage their shopping cart, and handle support requests automatically.
+A major e-commerce company needs to modernize its customer experience with AI. This assistant helps users:
 
-The company wants to explore two main areas: **Customer Experience** and **Operational Efficiency**.
+- Search for products with natural queries
+- Discover items using semantic understanding
+- Add/remove items from their shopping cart
+- Request refunds or report issues
+- Escalate complex cases to human agents
 
-Basically, they would like to provide customers with a conversational AI that can understand natural language queries about products, help them discover items they might like, manage their shopping cart, and automatically escalate complex issues to human support when needed. On the operational side, they want to reduce the workload on human customer service representatives while maintaining high-quality support.
+The system supports **multi-turn conversations**, **context memory**, and combines **structured search** with **semantic search** over a grocery product catalog.
 
-The system should be able to handle scenarios like customers searching for "healthy breakfast options", adding items to their cart, asking for refunds, or needing help with defective products. It should maintain conversation context across multiple turns and know when to bring in human supervisors for sensitive operations.
+---
 
-## About the data
+##  Dataset
 
-You will consume and use data from a grocery store dataset containing product information, customer orders, and purchase history.
+The assistant uses a real-world grocery dataset including:
 
-The dataset includes information about 49,000+ grocery products with names, departments, aisles, and pricing, along with historical order data showing what customers have purchased. The data is organized hierarchically with departments containing aisles, which contain individual products.
+- 49,000+ product entries
+- Product metadata (name, department, aisle, price)
+- Historical purchase data
 
-The system uses this data in two ways: structured search for SQL-like filtering over the catalog for precise queries, and semantic search using vector embeddings for understanding natural language product requests. Additionally, the system maintains conversation state and shopping cart information in memory during user sessions.
+Used for:
+- **Structured filtering** via Pandas
+- **Semantic search** using vector embeddings
 
-## Technical aspects
+---
 
-The team decided to build a conversational AI system using modern Large Language Model (LLM) technologies combined with traditional data processing techniques. The system needs to handle real-time conversations while maintaining state and context across multiple conversation turns.
+##  Tech Stack
 
-The technologies involved are:
-- Python as the main programming language
-- LangChain for LLM integration and tool management
-- LangGraph for conversation flow orchestration
-- OpenAI GPT models for natural language understanding
-- Chroma vector database for semantic product search
-- HuggingFace embeddings for text vectorization
-- Pandas for data manipulation and filtering
-- Pydantic for data validation and schema definition
-- Streamlit for the web interface
-- Pytest for comprehensive testing
+- **Python 3.10+**
+- **LangChain**: LLM agent management
+- **LangGraph**: Multi-agent orchestration
+- **OpenAI GPT models**: Natural language understanding
+- **Chroma**: Vector database for semantic search
+- **HuggingFace**: Text embeddings
+- **Pandas**: Data filtering and manipulation
+- **Pydantic**: Data validation and schemas
+- **Streamlit**: Web-based user interface
+- **Pytest**: Unit and integration testing
 
-## Installation
+---
 
-Before starting, you must have:
-- Python 3.10+
-- An OpenAI API key (Or change for your model of choice!)
-- Git (for cloning if using Google Colab)
+##  How to Run
 
-A `requirements.txt` file is provided with all the needed Python libraries for running this project. For installing the dependencies just run:
-
-```console
-$ pip install -r requirements.txt
-```
-
-**Important**: Set your OpenAI API key as an environment variable:
+1. **Install dependencies**:
 ```bash
+pip install -r requirements.txt
+Set OpenAI API key:
+
+bash
+Copiar
+Editar
 export OPENAI_API_KEY="your-api-key-here"
-```
+Build vector database
+(see detailed steps in ASSIGNMENT.md or custom scripts)
 
-*Note:* We encourage you to install those inside a virtual environment.
+Run assistant (CLI):
 
-Please see `ASSIGNMENT.md` for detailed instructions on building the vector database, which is required before the system will work.
-
-## Code Style
-
-Following a style guide keeps the code's aesthetics clean and improves readability, making contributions and code reviews easier. Automated Python code formatters make sure your codebase stays in a consistent style without any manual work on your end. If adhering to a specific style of coding is important to you, employing an automated to do that job is the obvious thing to do. This avoids bike-shedding on nitpicks during code reviews, saving you an enormous amount of time overall.
-
-We use [Black](https://black.readthedocs.io/) for automated code formatting in this project, you can run it with:
-
-```console
-$ black --line-length=88 .
-```
-
-Wanna read more about Python code style and good practices? Please see:
-- [The Hitchhiker's Guide to Python: Code Style](https://docs.python-guide.org/writing/style/)
-- [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
-
-## Tests
-
-We provide comprehensive unit tests and integration tests along with the project that you can run and check from your side the code meets the minimum requirements of correctness needed to approve. To run just execute:
-
-```console
-$ pytest tests/
-```
-
-## Running the Application
-
-Once you have completed the TODO functions and built the vector database, you can test the shopping assistant:
-
-### Command Line Testing
-```python
+python
+Copiar
+Editar
 from src.conversation_runner import run_single_turn
 result = run_single_turn("Hi, I need some bananas", "test-thread-123")
 print(result)
-```
+Run assistant (Web UI):
 
-### Web Interface
-```console
-$ streamlit run app.py
-```
+bash
+Copiar
+Editar
+streamlit run app.py
+ Testing
+Run tests:
 
-This will start a web interface where you can chat with the shopping assistant, test different conversation flows, and see the cart management in action.
+bash
+Copiar
+Editar
+pytest tests/
+ Project Structure
+bash
+Copiar
+Editar
+.
+├── src/               # Agent logic and orchestration
+├── data/              # Grocery dataset
+├── vector_db/         # Local vector store (excluded from repo)
+├── tests/             # Unit & integration tests
+├── app.py             # Streamlit app
+├── requirements.txt
+└── README.md
+ Code Style
+The code follows Python best practices using black:
+
+bash
+Copiar
+Editar
+black --line-length=88 .
+ Status
+ Multi-agent architecture with LangGraph
+
+ Memory, tool usage, and prompt templates
+
+ Working CLI and web interface
+
+ Embeddings and vector DB integration
+
+ Full testing coverage with Pytest
+
+This project showcases a modern, agent-based LLM system for intelligent automation in the e-commerce domain.
